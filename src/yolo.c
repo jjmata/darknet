@@ -11,6 +11,7 @@
 
 char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
 image voc_labels[20];
+image probs_labels[99];
 
 void train_yolo(char *cfgfile, char *weightfile)
 {
@@ -345,7 +346,7 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
         convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
         if (nms) do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
         //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, 20);
-        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, 20);
+        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, probs_labels, voc_names, voc_labels, 20);
         show_image(im, "predictions");
         save_image(im, "predictions");
 
@@ -365,10 +366,16 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index, cha
 void run_yolo(int argc, char **argv)
 {
     int i;
+    float j;
     for(i = 0; i < 20; ++i){
         char buff[256];
         sprintf(buff, "data/labels/%s.png", voc_names[i]);
         voc_labels[i] = load_image_color(buff, 0, 0);
+    }
+    for(j = 0.01; j < 0.99; j+=0.01){
+        char buff[256];
+        sprintf(buff, "data/probs/%.2f.png", j);
+        probs_labels[(int)(j*100)] = load_image_color(buff, 0, 0);
     }
 
     float thresh = find_float_arg(argc, argv, "-thresh", .2);

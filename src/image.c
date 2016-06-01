@@ -24,24 +24,37 @@ float get_color(int c, int x, int max)
     return r;
 }
 
-void draw_label(image a, int r, int c, image label, const float *rgb)
+void draw_label(image a, int r, int c, image label, image prob_label, const float *rgb)
 {
     float ratio = (float) label.w / label.h;
     int h = label.h;
     int w = ratio * h;
     image rl = resize_image(label, w, h);
     if (r - h >= 0) r = r - h;
+    float ratiop = (float) prob_label.w / prob_label.h;
+    int hp = prob_label.h;
+    int wp = ratiop * hp;
+    image rpl = resize_image(prob_label, wp, hp);
 
     int i, j, k;
     for(j = 0; j < h && j + r < a.h; ++j){
         for(i = 0; i < w && i + c < a.w; ++i){
             for(k = 0; k < label.c; ++k){
                 float val = get_pixel(rl, i, j, k);
+                set_pixel(a, i+c+50, j+r, k, rgb[k] * val);
+            }
+        }
+    }
+    for(j = 0; j < hp && j + r < a.h; ++j){
+        for(i = 0; i < wp && i + c < a.w; ++i){
+            for(k = 0; k < prob_label.c; ++k){
+                float val = get_pixel(rpl, i, j, k);
                 set_pixel(a, i+c, j+r, k, rgb[k] * val);
             }
         }
     }
     free_image(rl);
+    free_image(rpl);
 }
 
 void draw_box(image a, int x1, int y1, int x2, int y2, float r, float g, float b)
@@ -101,7 +114,7 @@ void draw_bbox(image a, box bbox, int w, float r, float g, float b)
     }
 }
 
-void draw_detections(image im, int num, float thresh, box *boxes, float **probs, char **names, image *labels, int classes)
+void draw_detections(image im, int num, float thresh, box *boxes, float **probs, image *probs_labels, char **names, image *labels, int classes)
 {
     int i;
 
@@ -133,7 +146,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
             if(bot > im.h-1) bot = im.h-1;
 
             draw_box_width(im, left, top, right, bot, width, red, green, blue);
-            if (labels) draw_label(im, top + width, left, labels[class], rgb);
+            if (labels) draw_label(im, top + width, left, labels[class], probs_labels[(int)(100*prob)], rgb);
         }
     }
 }
@@ -305,7 +318,7 @@ void show_image_cv(image p, const char *name)
 
     IplImage *disp = cvCreateImage(cvSize(p.w,p.h), IPL_DEPTH_8U, p.c);
     int step = disp->widthStep;
-    cvNamedWindow(buff, CV_WINDOW_NORMAL); 
+    cvNamedWindow(buff, CV_WINDOW_NORMAL);
     //cvMoveWindow(buff, 100*(windows%10) + 200*(windows/10), 100*(windows%10));
     ++windows;
     for(y = 0; y < p.h; ++y){
@@ -651,7 +664,7 @@ void show_image_cv(image p, const char *name)
         for(k = 0; k < fore.c; ++k){
             for(j = 0; j < fore.h; ++j){
                 for(i = 0; i < fore.w; ++i){
-                    float val = alpha * get_pixel(fore, i, j, k) + 
+                    float val = alpha * get_pixel(fore, i, j, k) +
                         (1 - alpha)* get_pixel(back, i, j, k);
                     set_pixel(blend, i, j, k, val);
                 }
@@ -733,8 +746,8 @@ void show_image_cv(image p, const char *name)
         float dx = x - ix;
         float dy = y - iy;
 
-        float val = (1-dy) * (1-dx) * get_pixel_extend(im, ix, iy, c) + 
-            dy     * (1-dx) * get_pixel_extend(im, ix, iy+1, c) + 
+        float val = (1-dy) * (1-dx) * get_pixel_extend(im, ix, iy, c) +
+            dy     * (1-dx) * get_pixel_extend(im, ix, iy+1, c) +
             (1-dy) *   dx   * get_pixel_extend(im, ix+1, iy, c) +
             dy     *   dx   * get_pixel_extend(im, ix+1, iy+1, c);
         return val;
@@ -742,7 +755,7 @@ void show_image_cv(image p, const char *name)
 
     image resize_image(image im, int w, int h)
     {
-        image resized = make_image(w, h, im.c);   
+        image resized = make_image(w, h, im.c);
         image part = make_image(w, im.h, im.c);
         int r, c, k;
         float w_scale = (float)(im.w - 1) / (w - 1);
@@ -1014,7 +1027,7 @@ void show_image_cv(image p, const char *name)
             free_image(copy);
         }
         return filters;
-    } 
+    }
 
     image collapse_images_horz(image *ims, int n)
     {
@@ -1050,7 +1063,7 @@ void show_image_cv(image p, const char *name)
             free_image(copy);
         }
         return filters;
-    } 
+    }
 
     void show_image_normalized(image im, const char *name)
     {
