@@ -342,19 +342,30 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
         float *X = sized.data;
         time=clock();
         float *predictions = network_predict(net, X);
-        printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
-        convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
-        if (nms) do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
-        //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, 20);
-        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, probs_labels, voc_names, voc_labels, 20);
-        show_image(im, "predictions");
-        save_image(im, "predictions");
+        printf("Predictions size: %lu\n", sizeof(predictions));
+        printf("%s: Max prediction = %.2f (threshold = %.2f)\n", input, predictions[max_index(predictions, sizeof(predictions))], thresh);
+        if(predictions && (predictions[max_index(predictions, sizeof(predictions))] > thresh)){
+          printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
+          printf("%s: Max prediction = %.2f (threshold = %.2f)\n", input, predictions[max_index(predictions, sizeof(predictions))], thresh);
 
-        show_image(sized, "resized");
+          convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
+          if (nms) do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
+          //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, 20);
+          draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, probs_labels, voc_names, voc_labels, 20);
+          show_image(im, "predictions");
+          save_image(im, "predictions");
+#ifdef OPENCV
+          save_image_jpg(im, "predictions");
+#endif
+        } else {
+          show_image(sized, "resized");
+          printf("%s: No prediction above threshold (%.2f).\n", input, thresh);
+        }
+
         free_image(im);
         free_image(sized);
 #ifdef OPENCV
-        cvWaitKey(0);
+        //cvWaitKey(0);
         cvDestroyAllWindows();
 #endif
         if (filename) break;

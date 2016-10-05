@@ -124,7 +124,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
         if(prob > thresh){
             int width = pow(prob, 1./2.)*10+1;
             width = 8;
-            printf("%s: %.2f\n", names[class], prob);
+            printf("[%.2f]: %s\n", names[class], prob);
             int offset = class*17 % classes;
             float red = get_color(0,offset,classes);
             float green = get_color(1,offset,classes);
@@ -351,8 +351,10 @@ void show_image_cv(image p, const char *name)
     {
 #ifdef OPENCV
         show_image_cv(p, name);
+        save_image(p, name);
+        save_image_jpg(p, name);
 #else
-        fprintf(stderr, "Not compiled with OpenCV, saving to %s.png instead\n", name);
+        fprintf(stderr, "Not compiled with OpenCV, saving to %s.png only\n", name);
         save_image(p, name);
 #endif
     }
@@ -1088,6 +1090,9 @@ void show_image_cv(image p, const char *name)
         normalize_image(m);
         image sized = resize_image(m, m.w, m.h);
         save_image(sized, window);
+#ifdef OPENCV
+        save_image_jpg(sized, window);
+#endif
         show_image(sized, window);
         free_image(sized);
         free_image(m);

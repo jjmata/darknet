@@ -15,6 +15,7 @@ void convert_yolo_detections(float *predictions, int classes, int num, int squar
 
 extern char *voc_names[];
 extern image voc_labels[];
+extern image probs_labels[];
 
 static float **probs;
 static box *boxes;
@@ -49,7 +50,7 @@ void *detect_in_thread(void *ptr)
     printf("\033[1;1H");
     printf("\nFPS:%.0f\n",fps);
     printf("Objects:\n\n");
-    draw_detections(det, l.side*l.side*l.n, demo_thresh, boxes, probs, voc_names, voc_labels, 20);
+    draw_detections(det, l.side*l.side*l.n, demo_thresh, boxes, probs, probs_labels, voc_names, voc_labels, 20);
     return 0;
 }
 
@@ -72,15 +73,21 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index, cha
     }
 
     if(!cap) error("Couldn't connect to webcam.\n");
-    cvNamedWindow("YOLO", CV_WINDOW_NORMAL); 
+    cvNamedWindow("YOLO", CV_WINDOW_NORMAL);
     cvResizeWindow("YOLO", 512, 512);
 
     detection_layer l = net.layers[net.n-1];
     int j;
+    float k;
 
     boxes = (box *)calloc(l.side*l.side*l.n, sizeof(box));
     probs = (float **)calloc(l.side*l.side*l.n, sizeof(float *));
     for(j = 0; j < l.side*l.side*l.n; ++j) probs[j] = (float *)calloc(l.classes, sizeof(float *));
+    for(k = 0.01; k < 0.99; k+=0.01){
+        char buff[256];
+        sprintf(buff, "data/probs/%.2f.png", k);
+        probs_labels[(int)(k*100)] = load_image_color(buff, 0, 0);
+    }
 
     pthread_t fetch_thread;
     pthread_t detect_thread;
@@ -121,4 +128,3 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index, cha
     fprintf(stderr, "YOLO demo needs OpenCV for webcam images.\n");
 }
 #endif
-

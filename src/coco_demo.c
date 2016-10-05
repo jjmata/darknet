@@ -16,6 +16,7 @@ void convert_coco_detections(float *predictions, int classes, int num, int squar
 
 extern char *coco_classes[];
 extern image coco_labels[];
+extern image probs_labels[];
 
 static float **probs;
 static box *boxes;
@@ -64,7 +65,7 @@ void *detect_in_thread_coco(void *ptr)
     det = images[(demo_index + FRAMES/2 + 1)%FRAMES];
     demo_index = (demo_index + 1)%FRAMES;
 
-    draw_detections(det, l.side*l.side*l.n, demo_thresh, boxes, probs, coco_classes, coco_labels, 80);
+    draw_detections(det, l.side*l.side*l.n, demo_thresh, boxes, probs, probs_labels, coco_classes, coco_labels, 80);
     return 0;
 }
 
@@ -87,11 +88,12 @@ void demo_coco(char *cfgfile, char *weightfile, float thresh, int cam_index, con
     }
 
     if(!cap) error("Couldn't connect to webcam.\n");
-    cvNamedWindow("COCO", CV_WINDOW_NORMAL); 
+    cvNamedWindow("COCO", CV_WINDOW_NORMAL);
     cvResizeWindow("COCO", 512, 512);
 
     detection_layer l = net.layers[net.n-1];
     int j;
+    float k;
 
     avg = (float *) calloc(l.outputs, sizeof(float));
     for(j = 0; j < FRAMES; ++j) predictions[j] = (float *) calloc(l.outputs, sizeof(float));
@@ -100,6 +102,11 @@ void demo_coco(char *cfgfile, char *weightfile, float thresh, int cam_index, con
     boxes = (box *)calloc(l.side*l.side*l.n, sizeof(box));
     probs = (float **)calloc(l.side*l.side*l.n, sizeof(float *));
     for(j = 0; j < l.side*l.side*l.n; ++j) probs[j] = (float *)calloc(l.classes, sizeof(float *));
+    for(k = 0.01; k < 0.99; k+=0.01){
+        char buff[256];
+        sprintf(buff, "data/probs/%.2f.png", k);
+        probs_labels[(int)(k*100)] = load_image_color(buff, 0, 0);
+    }
 
     pthread_t fetch_thread;
     pthread_t detect_thread;
@@ -154,4 +161,3 @@ void demo_coco(char *cfgfile, char *weightfile, float thresh, int cam_index){
     fprintf(stderr, "YOLO-COCO demo needs OpenCV for webcam images.\n");
 }
 #endif
-
